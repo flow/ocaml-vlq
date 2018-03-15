@@ -19,6 +19,9 @@ module type S = sig
   val decode: char Stream.t -> int
 end
 
+exception Unexpected_eof
+exception Invalid_base64 of char
+
 module Make (C: Config) = struct
   let vlq_base = 1 lsl C.shift
   let vlq_base_mask = vlq_base - 1
@@ -53,7 +56,7 @@ module Make (C: Config) = struct
     let rec helper (acc, shift) stream =
       let chr =
         try Stream.next stream
-        with Stream.Failure -> failwith "Unexpected EOF"
+        with Stream.Failure -> raise Unexpected_eof
       in
       let digit = C.digit_of_char chr in
       let continued = (digit land vlq_continuation_bit) != 0 in
@@ -78,5 +81,5 @@ module Base64 = Make (struct
 
   let digit_of_char chr =
     try String.index base64 chr
-    with Not_found -> failwith (Printf.sprintf "Invalid base64: %c" chr)
+    with Not_found -> raise (Invalid_base64 chr)
 end)
