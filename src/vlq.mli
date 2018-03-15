@@ -7,6 +7,7 @@
 
 module type S = sig
   val encode: Buffer.t -> int -> unit
+  val decode: char Stream.t -> int
 end
 
 module Base64 : S

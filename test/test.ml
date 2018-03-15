@@ -16,18 +16,27 @@ let cases = [
   123456789, "qxmvrH";
 ]
 
-let test_encode ctxt =
-  List.iter (fun (input, expected) ->
-    let buf = Buffer.create 10 in
-    Vlq.Base64.encode buf input;
-    let actual = Buffer.contents buf in
-    assert_equal ~ctxt ~printer:(fun x -> x)
-      ~msg:(Printf.sprintf "Vql.encode buf %d:" input)
-      expected actual
-  ) cases
-
 let tests = "vlq" >::: [
-  "encode" >:: test_encode;
+  "encode" >:: begin fun ctxt ->
+    List.iter (fun (input, expected) ->
+      let buf = Buffer.create 10 in
+      Vlq.Base64.encode buf input;
+      let actual = Buffer.contents buf in
+      assert_equal ~ctxt ~printer:(fun x -> x)
+        ~msg:(Printf.sprintf "Vql.encode buf %d:" input)
+        expected actual
+    ) cases
+  end;
+
+  "decode" >:: begin fun ctxt ->
+    List.iter (fun (input, expected) ->
+      let stream = Stream.of_string expected in
+      let actual = Vlq.Base64.decode stream in
+      assert_equal ~ctxt ~printer:string_of_int
+        ~msg:(Printf.sprintf "Vql.decode %S:" expected)
+        input actual
+    ) cases
+  end;
 ]
 
 let () = run_test_tt_main tests
