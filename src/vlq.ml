@@ -11,10 +11,12 @@
 module type Config = sig
   val shift: int
   val char_of_digit: int -> char
+  val digit_of_char: char -> int
 end
 
 module type S = sig
   val encode: Buffer.t -> int -> unit
+  val decode: char Stream.t -> int
 end
 
 module Make (C: Config) = struct
@@ -46,6 +48,22 @@ module Make (C: Config) = struct
   let encode buf value =
     let vlq = vlq_signed_of_int value in
     encode_vlq buf vlq
+
+  let decode =
+    let rec helper (acc, shift) stream =
+      let chr =
+        try Stream.next stream
+        with Stream.Failure -> failwith "Unexpected EOF"
+      in
+      let digit = C.digit_of_char chr in
+      let continued = (digit land vlq_continuation_bit) != 0 in
+      let acc = acc + (digit land vlq_base_mask) lsl shift in
+      if continued then helper (acc, shift + C.shift) stream else acc
+    in
+    fun stream ->
+      let acc = helper (0, 0) stream in
+      let abs = acc / 2 in
+      if acc land 1 = 0 then abs else -(abs)
 end
 
 module Base64 = Make (struct
@@ -57,4 +75,8 @@ module Base64 = Make (struct
     if 0 <= digit && digit < String.length base64
     then base64.[digit]
     else failwith (Printf.sprintf "Must be between 0 and 63: %d" digit)
+
+  let digit_of_char chr =
+    try String.index base64 chr
+    with Not_found -> failwith (Printf.sprintf "Invalid base64: %c" chr)
 end)
