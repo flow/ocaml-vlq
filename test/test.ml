@@ -44,14 +44,14 @@ let tests = "vlq" >::: [
     assert_equal ~ctxt ~printer:string_of_int 123456789 actual
   end;
 
-  "decode_eof" >:: begin fun ctxt ->
+  "decode_eof" >:: begin fun _ctxt ->
     let stream = Stream.of_string "qxmvr" in
     assert_raises Vlq.Unexpected_eof (fun () ->
       Vlq.Base64.decode stream
     )
   end;
 
-  "decode_invalid" >:: begin fun ctxt ->
+  "decode_invalid" >:: begin fun _ctxt ->
     let stream = Stream.of_string "qx." in
     assert_raises (Vlq.Invalid_base64 '.') (fun () ->
       Vlq.Base64.decode stream
