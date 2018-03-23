@@ -2,7 +2,7 @@
 
 (executable (
   (name test)
-  (libraries (vlq oUnit))
+  (libraries (vlq ounit))
 ))
 
 (alias (
