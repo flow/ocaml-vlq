@@ -71,8 +71,8 @@ module Base64 = Make (struct
 
   (* Convert a number between 0 and 63 to a base64 char *)
   let char_of_int digit =
-    match digit >= 0, digit < String.length base64 with
-    | true, true -> base64.[digit]
+    match digit >= 0 && digit < String.length base64 with
+    | true -> base64.[digit]
     | _ -> raise (Char_of_int_failure digit)
 
   let int_of_char chr =
