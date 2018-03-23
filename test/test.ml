@@ -520,9 +520,7 @@ let vlqs = [
 let tests = "vlq" >::: [
   "encode" >:: begin fun ctxt ->
     List.iter (fun (input, expected) ->
-      let buf = Buffer.create 10 in
-      Vlq.Base64.encode buf input;
-      let actual = Buffer.contents buf in
+      let actual = Vlq.Base64.encode input in
       assert_equal ~ctxt ~printer:(fun x -> x)
         ~msg:(Printf.sprintf "Vql.encode buf %d:" input)
         expected actual
@@ -531,8 +529,7 @@ let tests = "vlq" >::: [
 
   "decode" >:: begin fun ctxt ->
     List.iter (fun (input, expected) ->
-      let stream = Stream.of_string expected in
-      let actual = Vlq.Base64.decode stream in
+      let actual = Vlq.Base64.decode expected in
       assert_equal ~ctxt ~printer:string_of_int
         ~msg:(Printf.sprintf "Vql.decode %S:" expected)
         input actual
@@ -540,22 +537,19 @@ let tests = "vlq" >::: [
   end;
 
   "decode_extra" >:: begin fun ctxt ->
-    let stream = Stream.of_string "qxmvrH the rest is ignored" in
-    let actual = Vlq.Base64.decode stream in
+    let actual = Vlq.Base64.decode "qxmvrH the rest is ignored" in
     assert_equal ~ctxt ~printer:string_of_int 123456789 actual
   end;
 
   "decode_eof" >:: begin fun _ctxt ->
-    let stream = Stream.of_string "qxmvr" in
     assert_raises Vlq.Unexpected_eof (fun () ->
-      Vlq.Base64.decode stream
+      Vlq.Base64.decode "qxmvr"
     )
   end;
 
   "decode_invalid" >:: begin fun _ctxt ->
-    let stream = Stream.of_string "qx." in
     assert_raises (Vlq.Int_of_char_failure '.') (fun () ->
-      Vlq.Base64.decode stream
+      Vlq.Base64.decode "qx."
     )
   end;
 ]

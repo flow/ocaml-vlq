@@ -12,61 +12,57 @@ module type Config = sig
 end
 
 module type S = sig
-  val encode: Buffer.t -> int -> unit
-  val decode: char Stream.t -> int
+  val encode : int -> string
+  val decode : string -> int
 end
 
 exception Unexpected_eof
 exception Char_of_int_failure of int
 exception Int_of_char_failure of char
 
-module Make(C: Config) = struct
+module Make (C: Config) = struct
   let vlq_base = 1 lsl C.shift
   let vlq_base_mask = vlq_base - 1
-  let vlq_continuation_bit = vlq_base (* MSB *)
+  let vlq_continuation_bit = vlq_base
 
-  (**
-   * Converts from a two-complement value to a value where the sign bit is
-   * placed in the least significant bit.  For example, as decimals:
-   *   1 becomes 2 (10 binary), -1 becomes 3 (11 binary)
-   *   2 becomes 4 (100 binary), -2 becomes 5 (101 binary)
-   *)
+  (** Converts from a two-complement value to a value where the sign bit is
+      placed in the least significant bit.  For example, as decimals:
+        1 becomes 2 (10 binary), -1 becomes 3 (11 binary)
+        2 becomes 4 (100 binary), -2 becomes 5 (101 binary) *)
   let vlq_signed_of_int value =
       match value < 0 with
       | true  -> ((-value) lsl 1) + 1
       | false -> value lsl 1
 
-  (* Write the value to the buffer, as multiple characters as necessary *)
-  let rec encode_vlq buf vlq =
-    let digit = vlq land vlq_base_mask in
-    let vlq = vlq lsr C.shift in
-    if vlq = 0 then Buffer.add_char buf (C.char_of_int digit)
-    else begin
-      (* set the continuation bit *)
-      Buffer.add_char buf (C.char_of_int (digit lor vlq_continuation_bit));
-      encode_vlq buf vlq
-    end
-
-  (* Encodes `value` as a VLQ and writes it to `buf` *)
-  let encode buf value =
+  let encode value =
     let vlq = vlq_signed_of_int value in
-    encode_vlq buf vlq
+    let rec loop vlq encoded =
+      let digit = vlq land vlq_base_mask in
+      let vlq = vlq lsr C.shift in
+      match vlq = 0 with
+      | true  -> encoded ^ Char.escaped (C.char_of_int digit)
+      | false ->
+        loop vlq (encoded ^ Char.escaped
+          (C.char_of_int (digit lor vlq_continuation_bit))) in
+    loop vlq ""
 
-  let decode =
-    let rec helper (acc, shift) stream =
+  let decode value =
+    let stream = Stream.of_string value in
+    let rec loop shift decoded =
       let chr =
         try Stream.next stream
-        with Stream.Failure -> raise Unexpected_eof
-      in
+        with Stream.Failure -> raise Unexpected_eof in
       let digit = C.int_of_char chr in
-      let continued = (digit land vlq_continuation_bit) != 0 in
-      let acc = acc + (digit land vlq_base_mask) lsl shift in
-      if continued then helper (acc, shift + C.shift) stream else acc
-    in
-    fun stream ->
-      let acc = helper (0, 0) stream in
-      let abs = acc / 2 in
-      if acc land 1 = 0 then abs else -(abs)
+      let decoded = decoded + (digit land vlq_base_mask) lsl shift in
+      match digit land vlq_continuation_bit with
+      | 0 -> decoded
+      | _ -> (* Continuation found *)
+        loop (shift + C.shift) decoded in
+    let decoded = loop 0 0 in
+    let abs = decoded / 2 in
+    match decoded land 1 with
+    | 0 -> abs
+    | _ -> -(abs)
 end
 
 module Base64 = Make(struct

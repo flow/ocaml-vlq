@@ -35,9 +35,10 @@ exception Int_of_char_failure of char
   (** Happens when the provided char cannot be converted to an int *)
 
 module type S = sig
-  val encode: Buffer.t -> int -> unit
-  val decode: char Stream.t -> int
+  val encode : int -> string
+  val decode : string -> int
 end
+  (** Module signature *)
 
 module Base64 : S
   (** A single base 64 digit can contain 6 bits of data. For the base 64
