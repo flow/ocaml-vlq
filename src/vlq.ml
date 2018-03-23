@@ -34,7 +34,9 @@ module Make (C: Config) = struct
    *   2 becomes 4 (100 binary), -2 becomes 5 (101 binary)
    *)
   let vlq_signed_of_int value =
-    if value < 0 then ((-value) lsl 1) + 1 else (value lsl 1) + 0
+      match value < 0 with
+      | true  -> ((-value) lsl 1) + 1
+      | false -> value lsl 1
 
   (* Write the value to the buffer, as multiple characters as necessary *)
   let rec encode_vlq buf vlq =
