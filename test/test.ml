@@ -554,7 +554,7 @@ let tests = "vlq" >::: [
 
   "decode_invalid" >:: begin fun _ctxt ->
     let stream = Stream.of_string "qx." in
-    assert_raises (Vlq.Invalid_base64 '.') (fun () ->
+    assert_raises (Vlq.Int_of_char_failure '.') (fun () ->
       Vlq.Base64.decode stream
     )
   end;

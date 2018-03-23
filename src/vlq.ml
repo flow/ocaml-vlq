@@ -5,13 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  *)
 
-(* VLQ (variable-length quantity) encoder
-   https://en.wikipedia.org/wiki/Variable-length_quantity *)
-
 module type Config = sig
-  val shift: int
-  val char_of_digit: int -> char
-  val digit_of_char: char -> int
+  val shift : int
+  val char_of_int : int -> char
+  val int_of_char : char -> int
 end
 
 module type S = sig
@@ -20,8 +17,8 @@ module type S = sig
 end
 
 exception Unexpected_eof
-exception Invalid_base64 of char
-exception Out_of_range of int
+exception Char_of_int_failure of int
+exception Int_of_char_failure of char
 
 module Make(C: Config) = struct
   let vlq_base = 1 lsl C.shift
@@ -43,10 +40,10 @@ module Make(C: Config) = struct
   let rec encode_vlq buf vlq =
     let digit = vlq land vlq_base_mask in
     let vlq = vlq lsr C.shift in
-    if vlq = 0 then Buffer.add_char buf (C.char_of_digit digit)
+    if vlq = 0 then Buffer.add_char buf (C.char_of_int digit)
     else begin
       (* set the continuation bit *)
-      Buffer.add_char buf (C.char_of_digit (digit lor vlq_continuation_bit));
+      Buffer.add_char buf (C.char_of_int (digit lor vlq_continuation_bit));
       encode_vlq buf vlq
     end
 
@@ -61,7 +58,7 @@ module Make(C: Config) = struct
         try Stream.next stream
         with Stream.Failure -> raise Unexpected_eof
       in
-      let digit = C.digit_of_char chr in
+      let digit = C.int_of_char chr in
       let continued = (digit land vlq_continuation_bit) != 0 in
       let acc = acc + (digit land vlq_base_mask) lsl shift in
       if continued then helper (acc, shift + C.shift) stream else acc
@@ -77,12 +74,13 @@ module Base64 = Make(struct
   let base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
   (* Convert a number between 0 and 63 to a base64 char *)
-  let char_of_digit digit =
-      match digit >= 0, digit < String.length base64 with
-      | true, true -> base64.[digit]
-      | _ -> raise (Out_of_range digit)
+  let char_of_int digit =
+    match digit >= 0, digit < String.length base64 with
+    | true, true -> base64.[digit]
+    | _ -> raise (Char_of_int_failure digit)
 
-  let digit_of_char chr =
-    try String.index base64 chr
-    with Not_found -> raise (Invalid_base64 chr)
+  let int_of_char chr =
+    match String.index_opt base64 chr with
+    | Some index -> index
+    | None -> raise (Int_of_char_failure chr)
 end)
