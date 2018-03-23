@@ -65,7 +65,7 @@ module Make (C: Config) = struct
     | _ -> -(abs)
 end
 
-module Base64 = Make(struct
+module Base64 = Make (struct
   let shift = 5
   let base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 

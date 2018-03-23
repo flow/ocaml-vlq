@@ -36,9 +36,15 @@ exception Int_of_char_failure of char
 
 module type S = sig
   val encode : int -> string
+    (** [encode value] converts an integer for a VLQ string *)
+
   val decode : string -> int
+    (** [decode value] converts a VLQ string for an integer *)
 end
   (** Module signature *)
+
+module Make (C: Config) : S
+  (** Expose [Make] to allow custom constructions *)
 
 module Base64 : S
   (** A single base 64 digit can contain 6 bits of data. For the base 64
