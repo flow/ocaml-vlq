@@ -21,8 +21,9 @@ end
 
 exception Unexpected_eof
 exception Invalid_base64 of char
+exception Out_of_range of int
 
-module Make (C: Config) = struct
+module Make(C: Config) = struct
   let vlq_base = 1 lsl C.shift
   let vlq_base_mask = vlq_base - 1
   let vlq_continuation_bit = vlq_base (* MSB *)
@@ -71,15 +72,15 @@ module Make (C: Config) = struct
       if acc land 1 = 0 then abs else -(abs)
 end
 
-module Base64 = Make (struct
+module Base64 = Make(struct
   let shift = 5
   let base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
   (* Convert a number between 0 and 63 to a base64 char *)
   let char_of_digit digit =
-    if 0 <= digit && digit < String.length base64
-    then base64.[digit]
-    else failwith (Printf.sprintf "Must be between 0 and 63: %d" digit)
+      match digit >= 0, digit < String.length base64 with
+      | true, true -> base64.[digit]
+      | _ -> raise (Out_of_range digit)
 
   let digit_of_char chr =
     try String.index base64 chr
